@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+    <head>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="initial-scale=1, width=device-width">
+
+        <!-- https://favicon.io/emoji-favicons/money-bag/ -->
+        <link href="/static/favicon.ico" rel="icon">
+
+        <link href="/static/styles.css" rel="stylesheet">
+
+        <title>Wurdle{% block title %}{% endblock %}</title>
+
+    </head>
+
+    <body>
+        {% block body %}
+        <span class="centerpiece">
+                <div class="buttons">
+                    <form action="/makerselect" method="post">
+                        <button class="button" type="submit">CREATE</button>
+                    </form>
+                </div>
+        </span>
+        {% endblock %}
+    </body>
+
+</html>
