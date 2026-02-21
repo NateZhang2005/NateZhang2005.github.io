@@ -17,6 +17,19 @@
 
     <body>
         <div id="wordle"></div>
+        <div id="message" class="message"></div>
+        <button class="button play-again-top" id="playAgainTop" type="button">
+            Play Again
+        </button>
+        <div id="popup" class="popup">
+            <div class="popup__content">
+                <p id="popupMessage"></p>
+                <div class="popup__actions">
+                    <button class="button" id="popupPlayAgain" type="button">Play Again</button>
+                    <button class="button" id="popupClose" type="button">Close</button>
+                </div>
+            </div>
+        </div>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <script>
             // global variable that will store whether or not the person wants their word to be real or not
@@ -28,6 +41,7 @@
                 grid: [],
                 currentRow: 0,
                 currentCol: 0,
+                isGameOver: false,
             };
 
             // takes in customWord, # of guesses, and real variables
@@ -66,6 +80,40 @@
                 container.appendChild(grid);
             }
 
+            function setMessage(text) {
+                const message = document.getElementById('message');
+                message.textContent = text;
+            }
+
+            function showPopup(message) {
+                const popup = document.getElementById('popup');
+                const popupMessage = document.getElementById('popupMessage');
+                const popupPlayAgain = document.getElementById('popupPlayAgain');
+                const popupClose = document.getElementById('popupClose');
+                const playAgainTop = document.getElementById('playAgainTop');
+
+                popupMessage.textContent = message;
+                popup.classList.add('show');
+
+                popupPlayAgain.addEventListener('click', () => {
+                    window.location.href = '/';
+                });
+
+                popupClose.addEventListener('click', () => {
+                    popup.classList.remove('show');
+                    playAgainTop.classList.add('show');
+                });
+
+                playAgainTop.addEventListener('click', () => {
+                    window.location.href = '/';
+                });
+            }
+
+            function endGame(message) {
+                state.isGameOver = true;
+                showPopup(message);
+            }
+
             // function that updates the grid by setting each box equal to the respective 'state' value.
             function updateGrid() {
                 // iterates through each box of the state
@@ -86,6 +134,9 @@
             function registerKeyboardEvents() {
                 // detects when a key is pressed where 'e' represents event object
                 document.body.onkeydown = (e) => {
+                    if (state.isGameOver) {
+                        return;
+                    }
                     const key = e.key;
                     // check for 3 different scenarios: Enter, Backspace, Key. We want different things to happen for each scenario
                     if (key === 'Enter')
@@ -99,14 +150,13 @@
                                 // Fetch the current word from the grid
                                 const word = getCurrentWord();
                                 revealWord(word);
-                                if(state.currentRow < state.grid.length - 1)
-                                {
+                                if (word === state.solution) {
+                                    endGame("You guessed it! Play Again?");
+                                } else if (state.currentRow >= state.grid.length - 1) {
+                                    endGame("Out of guesses. Play Again?");
+                                } else {
                                     state.currentRow++;
                                     state.currentCol = 0;
-                                }
-                                else
-                                {
-                                    alert("sorry");
                                 }
                             } else
                             {
@@ -147,8 +197,14 @@
 
                                     if(result) {
                                         revealWord(word);
-                                        state.currentRow++;
-                                        state.currentCol = 0;
+                                        if (word === state.solution) {
+                                            endGame("You guessed it! Play Again?");
+                                        } else if (state.currentRow >= state.grid.length - 1) {
+                                            endGame("Out of guesses. Play Again?");
+                                        } else {
+                                            state.currentRow++;
+                                            state.currentCol = 0;
+                                        }
                                     } else
                                     {
                                         alert("Word not in list");
@@ -291,8 +347,12 @@
                             return;
                         } else
                         {
-                            alert("Word not in list");
+                            localStorage.setItem(
+                                "wurdleError",
+                                "That is not a real Wordle word."
+                            );
                             window.location.href = '/';
+                            return;
                         }
 
                     })

@@ -1,9 +1,6 @@
-import os
-from cs50 import SQL
-import sqlite3
-from flask import Flask, flash, redirect, render_template, url_for, request, session, jsonify
+from flask import Flask, render_template, request, jsonify
 from flask_session import Session
-from helpers import apology, login_required
+import sqlite3
 
 # Much source code kept from Finance pset
 # Configure application
@@ -14,8 +11,17 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure CS50 Library to use SQLite database
-possibleDB = SQL("sqlite:///possible.db")
+# Load possible words once to avoid per-request DB lookups
+def load_possible_words():
+    conn = sqlite3.connect("possible.db")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT word FROM possible")
+        return {row[0].lower() for row in cursor.fetchall()}
+    finally:
+        conn.close()
+
+possibleWords = load_possible_words()
 
 # Database source for possible guesses is from: https://gist.github.com/cfreshman/40608e78e83eb4e1d60b285eb7e9732f
 # Database source for possible solutions is from: https://github.com/steve-kasica/wordle-words/blob/master/wordle.csv
@@ -61,21 +67,7 @@ def check():
         return jsonify(result=False, error=str(e)), 400
 
 def wordInDatabase(word):
-    try:
-        # establish connection to database
-        conn = sqlite3.connect('possible.db')
-        cursor = conn.cursor()
+    if not word:
+        return False
 
-        # check if word appears in possible.db
-        cursor.execute("SELECT word FROM possible WHERE word = ?", (word,))
-        result = cursor.fetchone()
-
-        cursor.close()
-        conn.close()
-
-        if result:
-            return True
-        else:
-            return False
-    except Exception as e:
-        return jsonify(result=False, error=str(e)), 400
+    return word.strip().lower() in possibleWords
