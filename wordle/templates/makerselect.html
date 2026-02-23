@@ -4,7 +4,7 @@
 
     <span class="centerpiece">
         <div class="buttons">
-            <form action="/maker" method="post" onsubmit="storeValues()">
+            <form id="makerSelectForm" action="/maker" method="post">
                 <div id="setup">
                     <input type="text" id="customWord" placeholder="Word" name="customWord" class="form__field">
                     <input type="number" id="guessCount" name="guessCount" placeholder="Number of guesses" min="1" max="10">
@@ -19,15 +19,5 @@
         </div>
     </span>
 
-    <script>
-        // stores values from the form on the page
-        function storeValues() {
-            const word = document.getElementById('customWord').value;
-            const guesses = parseInt(document.getElementById('guessCount').value);
-            const real = document.getElementById('realWord').value;
-            localStorage.setItem('customWord', word);
-            localStorage.setItem('guessCount', guesses);
-            localStorage.setItem('realWord', real);
-        }
-    </script>
+    <script src="/static/makerselect.js"></script>
 {% endblock %}

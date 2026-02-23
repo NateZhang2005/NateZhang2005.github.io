@@ -31,23 +31,7 @@
                 <button class="button" id="popupClose" type="button">OK</button>
             </div>
         </div>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const message = localStorage.getItem('wurdleError');
-                if (message) {
-                    const popup = document.getElementById('popup');
-                    const popupMessage = document.getElementById('popupMessage');
-                    const popupClose = document.getElementById('popupClose');
-
-                    popupMessage.textContent = message;
-                    popup.classList.add('show');
-                    popupClose.addEventListener('click', () => {
-                        popup.classList.remove('show');
-                    });
-                    localStorage.removeItem('wurdleError');
-                }
-            });
-        </script>
+        <script src="/static/homepage.js"></script>
         {% endblock %}
     </body>
 

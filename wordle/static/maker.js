@@ -1,0 +1,354 @@
+// global variable that will store whether or not the person wants their word to be real or not
+let real = '';
+
+// matrix storing the words inputed by the user in the wordle game
+let state = {
+    solution: '',
+    grid: [],
+    currentRow: 0,
+    currentCol: 0,
+    isGameOver: false,
+};
+
+// takes in customWord, # of guesses, and real variables
+document.addEventListener('DOMContentLoaded', () => {
+    const customWord = localStorage.getItem('customWord');
+    const guesses = parseInt(localStorage.getItem('guessCount'), 10);
+    real = localStorage.getItem('realWord');
+    startGame(customWord, guesses, real);
+});
+
+// credit to https://www.youtube.com/watch?v=oKM2nQdQkIU for much of the basic functionality and appearance
+
+// function that creates each box in the grid
+function drawBox(container, row, col, letter = '') {
+    // creates a new <div> segment
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.textContent = letter;
+    // creates a unique ID for the box given the current row/column it's being created at
+    box.id = `box${row}${col}`;
+    container.appendChild(box);
+    return box;
+}
+
+// function that draws the entire grid by calling drawBox() the appropriate number of times
+function drawGrid(container, wordLength, guesses) {
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    grid.style.gridTemplateColumns = `repeat(${wordLength}, 1fr)`; // Set columns based on word length
+
+    for (let i = 0; i < guesses; i++) {
+        for (let j = 0; j < wordLength; j++) {
+            drawBox(grid, i, j);
+        }
+    }
+    container.appendChild(grid);
+}
+
+function setMessage(text) {
+    const message = document.getElementById('message');
+    message.textContent = text;
+}
+
+function showPopup(message) {
+    const popup = document.getElementById('popup');
+    const popupMessage = document.getElementById('popupMessage');
+    const popupPlayAgain = document.getElementById('popupPlayAgain');
+    const popupClose = document.getElementById('popupClose');
+    const playAgainTop = document.getElementById('playAgainTop');
+
+    popupMessage.textContent = message;
+    popup.classList.add('show');
+
+    popupPlayAgain.addEventListener('click', () => {
+        window.location.href = '/';
+    });
+
+    popupClose.addEventListener('click', () => {
+        popup.classList.remove('show');
+        playAgainTop.classList.add('show');
+    });
+
+    playAgainTop.addEventListener('click', () => {
+        window.location.href = '/';
+    });
+}
+
+function endGame(message) {
+    state.isGameOver = true;
+    showPopup(message);
+}
+
+// function that updates the grid by setting each box equal to the respective 'state' value.
+function updateGrid() {
+    // iterates through each box of the state
+    for (let i = 0; i < state.grid.length; i++) {
+        for (let j = 0; j < state.grid[i].length; j++) {
+            // using the ID's created in the drawBox function, we can get the ID of each box by inputing the current row and column
+            const box = document.getElementById(`box${i}${j}`);
+            const boxId = `box${i}${j}`;
+            // checks to see if box exists
+            if (box) {
+                // sets each box equal to the respective game state value
+                box.textContent = state.grid[i][j];
+            }
+        }
+    }
+}
+
+function registerKeyboardEvents() {
+    // detects when a key is pressed where 'e' represents event object
+    document.body.onkeydown = (e) => {
+        if (state.isGameOver) {
+            return;
+        }
+        const key = e.key;
+        // check for 3 different scenarios: Enter, Backspace, Key. We want different things to happen for each scenario
+        if (key === 'Enter')
+        {
+            // if word is not real, there is no need to check the database for the word
+            if (real === "no")
+            {
+            // check if the whole word is typed out
+                if (state.currentCol === state.solution.length)
+                {
+                    // Fetch the current word from the grid
+                    const word = getCurrentWord();
+                    revealWord(word);
+                    if (word === state.solution) {
+                        endGame("You guessed it! Play Again?");
+                    } else if (state.currentRow >= state.grid.length - 1) {
+                        endGame("Out of guesses. Play Again?");
+                    } else {
+                        state.currentRow++;
+                        state.currentCol = 0;
+                    }
+                } else
+                {
+                    return;
+                }
+            }
+            // calls the check() python function to check whether or not the word is in the possible.db database
+            if (real === "yes")
+            {
+                alert(`${real}`);
+                if(state.currentCol === 5)
+                {
+                    const word = getCurrentWord();
+                    // fetches the /check function in app.py
+                    fetch('/check', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ word: word })
+                    })
+                    // if response is received
+                    .then(response =>
+                    {
+                        if (!response.ok)
+                        {
+                            alert("Error: not received");
+                            throw new Error('Network response was not ok');
+                        } else
+                        {
+                            return response.json();
+                        }
+                    })
+                    .then(data =>
+                    {
+                        // gets boolean returned from python check function
+                        const result = data.result;
+
+                        if(result) {
+                            revealWord(word);
+                            if (word === state.solution) {
+                                endGame("You guessed it! Play Again?");
+                            } else if (state.currentRow >= state.grid.length - 1) {
+                                endGame("Out of guesses. Play Again?");
+                            } else {
+                                state.currentRow++;
+                                state.currentCol = 0;
+                            }
+                        } else
+                        {
+                            alert("Word not in list");
+                        }
+
+                    })
+                    // catches fetching errors
+                    .catch(error =>
+                    {
+                        console.error('Error:', error);
+                    }
+                    )
+                }
+            }
+        }
+        if (key === 'Backspace')
+        {
+            removeLetter();
+        }
+        if (isLetter(key))
+        {
+            addLetter(key);
+        }
+
+        updateGrid();
+        return;
+    };
+}
+// returns current word using the reduce function
+function getCurrentWord() {
+    // reduce function works by continuously adding the next letter, 'curr', to the current letters, 'prev', until the entire word is obtained
+    return state.grid[state.currentRow].reduce((prev, curr) => prev + curr);
+}
+
+/* function isValidWord(word) {
+    return valid.includes(word);
+} */
+
+function revealWord(guess) {
+    const row = state.currentRow;
+    for (let i = 0; i < guess.length; i++) {
+        const boxId = `box${row}${i}`;
+        const box = document.getElementById(boxId);
+        const letter = guess[i];
+        // adds the colors to the boxes
+        if (letter === state.solution[i])
+        {
+            box.classList.add('right');
+        } else if (state.solution.includes(letter))
+        {
+            box.classList.add('wrongloc');
+        } else
+        {
+            box.classList.add('wrong');
+        }
+    }
+}
+
+/* const isWinner = state.solution === guess;
+const isGameOver = state.currentRow === 5;
+
+if (isWinner) {
+    alert('Winner!');
+} else if (isGameOver) {
+    alert(`Lose! The word was ${state.solution}`);
+} */
+
+function isLetter(key) {
+    // check that the key is a letter
+    return key.length === 1 && key.match(/[a-z]/i);
+}
+
+function addLetter(letter) {
+    if (state.currentCol < state.solution.length)
+    {
+        state.grid[state.currentRow][state.currentCol] = letter;
+        state.currentCol++;
+    } else
+    {
+        return;
+    }
+}
+
+function removeLetter() {
+    if (state.currentCol === 0)
+    {
+        return;
+    }
+    state.grid[state.currentRow][state.currentCol - 1] = '';
+    state.currentCol--;
+}
+
+function startGame(word, guesses, real) {
+    const wordLength = word.length;
+    // Validate the input
+    if (guesses < 1 || guesses > 10) {
+        alert("Please enter a valid word and a valid number of guesses (1-10).");
+        return;
+    }
+    // if the user wants the word to be real, we must check that the word they submitted is in the possible.db database
+    if (real === "yes")
+    {
+        fetch('/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ word: word })
+        })
+        // if response is received
+        .then(response =>
+        {
+            if (!response.ok)
+            {
+                alert("Error: not received");
+                throw new Error('Network response was not ok');
+            } else
+            {
+                return response.json();
+            }
+        })
+        .then(data =>
+        {
+            // gets boolean returned from python check function
+            const result = data.result;
+
+            if(result) {
+                state.solution = word;
+                // creates grid with guesses # of rows and columns matching the length of the word
+                state.grid = Array(guesses).fill().map(() => Array(word.length).fill(''));
+                // variables dictate the Row and Column where the next letter will be types. These variables will be set to 0 at first.
+
+
+
+                // Clear previous grid if any and draw a new one
+                const wordle = document.getElementById('wordle');
+                wordle.innerHTML = '';
+                drawGrid(wordle, wordLength, guesses);  // Redraw grid based on new dimensions
+                registerKeyboardEvents();  // Re-register keyboard events if necessary
+                return;
+            } else
+            {
+                localStorage.setItem(
+                    "wurdleError",
+                    "That is not a real Wordle word."
+                );
+                window.location.href = '/';
+                return;
+            }
+
+        })
+        // catches fetching errors
+        .catch(error =>
+        {
+            console.error('Error:', error);
+        }
+        );
+    }
+
+    if(real === "no")
+    {
+        state.solution = word;
+        state.grid = Array(guesses).fill().map(() => Array(word.length).fill(''));
+
+        const wordle = document.getElementById('wordle');
+        wordle.innerHTML = '';
+        drawGrid(wordle, wordLength, guesses);
+        registerKeyboardEvents();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Adapted from https://stackoverflow.com/a/10162353
+    const html = '<!DOCTYPE ' +
+    document.doctype.name +
+    (document.doctype.publicId ? ' PUBLIC "' + document.doctype.publicId + '"' : '') +
+    (!document.doctype.publicId && document.doctype.systemId ? ' SYSTEM' : '') +
+    (document.doctype.systemId ? ' "' + document.doctype.systemId + '"' : '') +
+    '>\n' + document.documentElement.outerHTML;
+    document.querySelector('form[action="https://validator.w3.org/check"] > input[name="fragment"]').value = html;
+});
