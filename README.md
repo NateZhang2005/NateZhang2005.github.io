@@ -1,4 +1,4 @@
-## Hi there 👋
+## Hi, Welcome to Nate's Personal Page
 
 <!--
 **NateZhang2005/NateZhang2005** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
